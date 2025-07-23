@@ -101,7 +101,7 @@ const handleLogin = async () => {
         const result = await login(loginForm)
         const { code, data: user, message } = result.data
 
-        if (code === 1000) {
+        if (code === 200) { // 兼容后端code为200
           // 存储用户信息
           const uid = user.uid ? String(user.uid) : null
           if (!uid) {
@@ -118,12 +118,8 @@ const handleLogin = async () => {
 
           ElMessage.success('登录成功')
 
-          // 根据角色跳转不同页面
-          if (loginForm.account === 'admin') {
-            router.push('/home')
-          } else {
-            router.push('/chat')
-          }
+          // 跳转到情绪日记本主页
+          router.push('/user/diary')
         } else {
           ElMessage.error(message)
         }

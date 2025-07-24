@@ -2,9 +2,12 @@
   <div class="register-container">
     <div class="register-box">
       <el-card class="register-card">
+        <div class="logo-box">
+          <img src="/src/assets/assets/imgs/bghalf-2.jpg" class="logo-img" alt="logo" />
+        </div>
         <div class="title">
-          <h2>用户注册</h2>
-          <p class="subtitle">欢迎加入我们的平台</p>
+          <h2>情绪日记本注册</h2>
+          <p class="subtitle">开启你的情绪记录之旅</p>
         </div>
         <el-form 
           :model="registerForm" 
@@ -125,10 +128,15 @@ const handleRegister = async () => {
     if (valid) {
       try {
         loading.value = true
-        const result = await register(registerForm)
+        // 只传 account 和 password 给后端
+        const payload = {
+          account: registerForm.account,
+          password: registerForm.password
+        }
+        const result = await register(payload)
         const { code, message } = result.data
         
-        if (code === 1000) {
+        if (code === 1000 || code === 200) {
           ElMessage.success('注册成功')
           router.push('/login')
         } else {
@@ -167,15 +175,28 @@ const handleRegister = async () => {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   padding: 40px 50px;
+  position: relative;
 }
-
+.logo-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.logo-img {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(126,198,230,0.15);
+}
 .title {
   text-align: center;
   margin-bottom: 45px;
 }
 
 .title h2 {
-  color: #409EFF;
+  color: #7ec6e6;
   margin: 0;
   font-size: 28px;
   font-weight: 600;
@@ -253,7 +274,7 @@ const handleRegister = async () => {
   font-size: 16px;
   font-weight: 500;
   border-radius: 6px;
-  background: linear-gradient(45deg, #409EFF, #36cfc9);
+  background: linear-gradient(90deg, #7ec6e6, #f7cac9);
   border: none;
   transition: all 0.3s ease;
   letter-spacing: 2px;
@@ -271,7 +292,7 @@ const handleRegister = async () => {
 }
 
 .login-link .el-button {
-  color: #409EFF;
+  color: #7ec6e6;
   background: none;
   border: none;
   padding: 0;

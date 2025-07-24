@@ -2,9 +2,12 @@
   <div class="login-container">
     <div class="login-box">
       <el-card class="login-card">
+        <div class="logo-box">
+          <img src="/src/assets/assets/imgs/bghalf-2.jpg" class="logo-img" alt="logo" />
+        </div>
         <div class="title">
-          <h2>客服系统</h2>
-          <p class="subtitle">与AI对话的理想平台</p>
+          <h2>情绪日记本登录</h2>
+          <p class="subtitle">记录你的心情，遇见更好的自己</p>
         </div>
         <el-form 
           :model="loginForm" 
@@ -54,6 +57,14 @@
       </el-card>
     </div>
   </div>
+  <el-button type="text" @click="showDeleteDialog = true" style="margin-top: 10px;">账号注销</el-button>
+  <el-dialog v-model="showDeleteDialog" title="账号注销" width="350px">
+    <el-input v-model="deleteAccount" placeholder="请输入要注销的账号" />
+    <template #footer>
+      <el-button @click="showDeleteDialog = false">取消</el-button>
+      <el-button type="danger" @click="doDeleteAccount" :loading="deleting">确定注销</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -61,6 +72,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { login } from '@/api/user'
+import request from '@/utils/request'
 
 // 路由实例
 const router = useRouter()
@@ -87,6 +99,10 @@ const loginRules = reactive({
     { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
   ]
 })
+
+const showDeleteDialog = ref(false)
+const deleteAccount = ref('')
+const deleting = ref(false)
 
 /**
  * 处理登录逻辑
@@ -132,6 +148,30 @@ const handleLogin = async () => {
     }
   })
 }
+
+const doDeleteAccount = async () => {
+  if (!deleteAccount.value) {
+    ElMessage.error('请输入账号')
+    return
+  }
+  deleting.value = true
+  try {
+    // 查找uid
+    const res = await request.post('/user/selectUserInfo', { account: deleteAccount.value })
+    if ((res.data.code === 200 || res.data.code === 1000) && res.data.data && res.data.data.uid) {
+      const uid = res.data.data.uid
+      await request.delete(`/user/delete/${uid}`)
+      ElMessage.success('账号已删除')
+      showDeleteDialog.value = false
+    } else {
+      ElMessage.error('账号不存在')
+    }
+  } catch (err) {
+    ElMessage.error('注销失败')
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -156,15 +196,28 @@ const handleLogin = async () => {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   padding: 40px 50px;
+  position: relative;
 }
-
+.logo-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.logo-img {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(126,198,230,0.15);
+}
 .title {
   text-align: center;
   margin-bottom: 45px;
 }
 
 .title h2 {
-  color: #409EFF;
+  color: #7ec6e6;
   margin: 0;
   font-size: 28px;
   font-weight: 600;
@@ -240,7 +293,7 @@ const handleLogin = async () => {
   font-size: 16px;
   font-weight: 500;
   border-radius: 6px;
-  background: linear-gradient(to right, #409EFF, #36cfc9);
+  background: linear-gradient(90deg, #7ec6e6, #f7cac9);
   border: none;
   transition: all 0.3s ease;
   letter-spacing: 2px;
@@ -265,7 +318,7 @@ const handleLogin = async () => {
 }
 
 .register-link .el-button:hover {
-  color: #409EFF;
+  color: #7ec6e6;
   transform: translateY(-1px);
 }
 

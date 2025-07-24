@@ -4,9 +4,6 @@ import Login from '@/components/Login.vue'
 import Register from '@/components/Register.vue'
 import Error from '@/components/utils/404.vue'
 import Forbidden from '@/components/utils/403.vue'
-// admin/menu
-import Home from '@/components/admin/Home.vue'
-import UpdateAdminInfo from '@/components/admin/menu/UpdateAdminInfo.vue'
 // user
 import UserHome from '@/components/user/UserHome.vue'
 import Chat from '@/components/user/menu/Chat.vue'
@@ -19,6 +16,7 @@ import Capsule from '@/components/user/Capsule.vue'
 import DailyQuote from '@/components/user/DailyQuote.vue'
 import AnonymousPlanet from '@/components/user/AnonymousPlanet.vue'
 import AnonymousPostDetail from '@/components/user/AnonymousPostDetail.vue'
+import UpdateInfo from '@/components/user/UpdateInfo.vue'
 
 const routes = [
   {
@@ -46,7 +44,6 @@ const routes = [
     name: 'Register',
     component: Register
   },
-
   // 用户页面
   {
     path: '/user',
@@ -62,21 +59,8 @@ const routes = [
       { path: 'quote', component: DailyQuote, meta: {title: '日签'} },
       { path: 'planet', component: AnonymousPlanet, meta: {title: '匿名星球'} },
       { path: 'planet/detail/:id', component: AnonymousPostDetail, meta: {title: '动态详情'} },
-      { path: 'chat', meta: {title: '对话'}, component: Chat }
-    ]
-  },
-  // 管理员页面
-  {
-    path: '/home',
-    component: Home,
-    // 为 Home 页创建子路由，并默认跳转。
-    redirect: '/update_admin_info',
-    children: [
-      {
-        path: '/update_admin_info',
-        meta: {title: "个人信息"},
-        component: UpdateAdminInfo
-      }
+      { path: 'chat', meta: {title: '对话'}, component: Chat },
+      { path: 'update_info', component: UpdateInfo, meta: {title: '个人信息'} }
     ]
   }
 ]
@@ -85,6 +69,5 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes
 })
-
 
 export default router

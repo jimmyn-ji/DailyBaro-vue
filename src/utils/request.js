@@ -26,7 +26,7 @@ request.interceptors.response.use(
     const res = response.data
     
     // 这里可以根据后端的返回码进行统一处理
-    if (res.code !== 200) {
+    if (res.code !== 200 && res.code !== 1000) {
       ElMessage.error(res.message || '请求失败')
       
       // 处理特定错误码

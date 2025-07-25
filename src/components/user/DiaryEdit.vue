@@ -2,19 +2,41 @@
   <div class="edit-bg">
     <div class="edit-card">
       <h2 class="edit-title">{{ isEdit ? '编辑日记' : '新增日记' }}</h2>
-      <input v-model="title" class="edit-input" placeholder="标题" />
-      <textarea v-model="content" class="edit-textarea" placeholder="写下你的心情..." />
-      <div class="tags">
-        <label v-for="tag in tags" :key="tag.tag_id" class="tag-label">
-          <input type="checkbox" :value="tag.tag_name" v-model="selectedTags" />{{ tag.tag_name }}
-        </label>
-      </div>
-      <input type="file" multiple @change="handleFileChange" class="file-input" />
+      <el-input v-model="title" class="edit-input" placeholder="标题" />
+      <el-input type="textarea" v-model="content" class="edit-textarea" placeholder="写下你的心情..." />
+      <el-select v-model="selectedTags" multiple placeholder="选择标签" class="edit-tags">
+        <el-option v-for="tag in tags" :key="tag.tagId" :label="tag.tagName" :value="tag.tagId" />
+      </el-select>
+      <input type="file" multiple @change="handleFileChange" accept="image/*,video/*,audio/*" class="file-input" />
+      <div style="color:#888;font-size:13px;margin-bottom:8px;">支持图片、视频、音频上传，单文件最大50MB，支持mp3、wav、mp4、mov等格式。</div>
       <div class="media-preview">
-        <div v-for="file in mediaFiles" :key="file.name" class="media-item">
-          <span>{{ file.name }}</span>
-          <button class="remove-btn" @click="removeFile(file)">删除</button>
+        <div v-for="(file, idx) in allMedia" :key="file.uid || file.name || file.media_id" class="media-item">
+          <img v-if="file.type==='image'" :src="getFullUrl(file.url)" class="media-thumb" @click="previewImage(getFullUrl(file.url))" style="cursor:pointer;" />
+          <div v-else-if="file.type==='video'" class="media-thumb" style="cursor:pointer;position:relative;">
+            <video :src="getFullUrl(file.url)" style="width:100%;height:100%;object-fit:cover;" muted preload="metadata" @click.stop="previewMedia('video', getFullUrl(file.url))" />
+            <div class="media-play-btn" @click.stop="previewMedia('video', getFullUrl(file.url))">&#9654;</div>
+          </div>
+          <div v-else-if="file.type==='audio'" class="media-thumb" style="cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;background:#f0f0f0;" @click.stop="previewMedia('audio', getFullUrl(file.url))">
+            <span style="font-size:28px;">&#127925;</span>
+            <div class="media-play-btn" style="left:auto;right:10px;top:10px;transform:none;" @click.stop="previewMedia('audio', getFullUrl(file.url))">&#9654;</div>
+          </div>
+          <span class="media-name">{{ file.name || file.originName }}</span>
+          <el-button size="small" type="danger" @click="removeFile(file, idx)">删除</el-button>
         </div>
+        <el-dialog v-model="showImgDialog" width="auto" top="10vh">
+          <img :src="previewImgUrl" style="max-width:80vw;max-height:80vh;display:block;margin:auto;" />
+        </el-dialog>
+        <el-dialog v-model="showMediaDialog" width="auto" top="10vh">
+          <div style="text-align:right;margin-bottom:8px;">
+            <el-button size="small" @click="showMediaDialog=false">关闭</el-button>
+          </div>
+          <video v-if="previewMediaType==='video'" :src="previewMediaUrl" style="max-width:80vw;max-height:80vh;display:block;margin:auto;" controls autoplay @error="onMediaError" />
+          <audio v-else-if="previewMediaType==='audio'" :src="previewMediaUrl" style="width:80vw;display:block;margin:auto;" controls autoplay @error="onMediaError" />
+          <div v-if="mediaError" style="color:red;text-align:center;margin-top:10px;">文件无法播放，请检查格式或重新上传。</div>
+        </el-dialog>
+        <el-dialog v-model="showTextDialog" width="500px" top="10vh">
+          <div style="white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow:auto;">{{ content }}</div>
+        </el-dialog>
       </div>
       <div class="btn-group">
         <button class="draft-btn" @click="saveDraft">保存草稿</button>
@@ -24,26 +46,102 @@
   </div>
 </template>
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
+import { ref as vueRef } from 'vue'
+const showImgDialog = vueRef(false)
+const previewImgUrl = vueRef('')
+function previewImage(url) {
+  previewImgUrl.value = url
+  showImgDialog.value = true
+}
+function getFullUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return 'http://localhost:8081' + url;
+}
 const route = useRoute()
 const router = useRouter()
 const isEdit = !!route.params.id
 const title = ref('')
 const content = ref('')
-const mediaFiles = ref([])
 const tags = ref([])
 const selectedTags = ref([])
-function handleFileChange(e) { mediaFiles.value = Array.from(e.target.files) }
-function removeFile(file) { mediaFiles.value = mediaFiles.value.filter(f => f !== file) }
-async function loadTags() {
-  try {
-    const res = await request.get('/api/tag')
-    tags.value = res.data.data || []
-  } catch {
-    tags.value = [ { tag_id: 1, tag_name: '开心' }, { tag_id: 2, tag_name: '难过' }, { tag_id: 3, tag_name: '压力' } ]
+const newFiles = ref([]) // 新上传的文件
+const existMedia = ref([]) // 已有媒体（编辑时回显）
+const showMediaDialog = vueRef(false)
+const previewMediaType = vueRef('')
+const previewMediaUrl = vueRef('')
+const mediaError = vueRef(false)
+function onMediaError() {
+  mediaError.value = true
+}
+// 在每次打开媒体弹窗时重置错误状态
+function previewMedia(type, url) {
+  previewMediaType.value = type
+  previewMediaUrl.value = url
+  mediaError.value = false
+  showMediaDialog.value = true
+}
+const allMedia = computed(() => {
+  // 统一新上传和已存在的媒体
+  return [
+    ...existMedia.value.map(m => ({
+      ...m,
+      url: m.mediaUrl,
+      type: m.mediaType,
+      name: m.mediaUrl ? m.mediaUrl.split('/').pop() : ''
+    })),
+    ...newFiles.value
+  ]
+})
+
+function getFileType(file) {
+  if (file.type) {
+    if (file.type.startsWith('image')) return 'image'
+    if (file.type.startsWith('video')) return 'video'
+    if (file.type.startsWith('audio')) return 'audio'
   }
+  // 已有媒体
+  if (file.media_type) return file.media_type
+  return 'other'
+}
+
+function handleFileChange(e) {
+  const files = Array.from(e.target.files)
+  files.forEach(f => {
+    const type = getFileType(f)
+    const url = URL.createObjectURL(f)
+    newFiles.value.push({ file: f, url, type, name: f.name })
+  })
+}
+async function deleteMedia(media, diary) {
+  try {
+    await request.delete(`/api/diary/media/${media.mediaId}`)
+    // 从前端移除
+    diary.media = diary.media.filter(m => m.mediaId !== media.mediaId)
+    ElMessage.success('删除成功')
+  } catch (e) {
+    ElMessage.error('删除失败')
+  }
+}
+function removeFile(file, idx) {
+  // 新上传的文件
+  if (file.file) {
+    newFiles.value = newFiles.value.filter(f => f !== file)
+  } else if (file.media_id) {
+    // 已有媒体，调用后端删除
+    request.delete(`/api/diary/media/${file.media_id}`).then(() => {
+      existMedia.value = existMedia.value.filter(f => f !== file)
+      ElMessage.success('已删除')
+    })
+  }
+}
+async function loadTags() {
+  const res = await request.get('/api/tag')
+  tags.value = res.data.data || []
 }
 async function loadDiary() {
   if (!isEdit) return
@@ -51,21 +149,34 @@ async function loadDiary() {
   const d = res.data.data
   title.value = d.title
   content.value = d.content
-  selectedTags.value = d.tags ? d.tags.map(t => t.tag_name) : []
+  selectedTags.value = d.tagIds ? d.tagIds : (d.tags ? d.tags.map(t => t.tagId) : [])
+  existMedia.value = (d.media || []).map(m => ({
+    ...m,
+    url: m.mediaUrl,
+    type: m.mediaType,
+    name: m.mediaUrl ? m.mediaUrl.split('/').pop() : ''
+  }))
 }
-async function saveDiary(status) {
+async function saveDiary(status, silent = false) {
   const form = new FormData()
   form.append('title', title.value)
   form.append('content', content.value)
-  selectedTags.value.forEach(t => form.append('tags', t))
-  mediaFiles.value.forEach(f => form.append('mediaFiles', f))
-  form.append('status', status)
+  if (selectedTags.value && selectedTags.value.length > 0) {
+    form.append('tagIds', selectedTags.value.join(','))
+  }
   if (isEdit) {
+    // 编辑时用 newMediaFiles
+    newFiles.value.forEach(f => f.file && form.append('newMediaFiles', f.file))
+    form.append('status', status)
     await request.put(`/api/diary/${route.params.id}`, form)
   } else {
+    // 新增时用 mediaFiles
+    newFiles.value.forEach(f => f.file && form.append('mediaFiles', f.file))
+    form.append('status', status)
     await request.post('/api/diary', form)
   }
-  router.push('/user/diary')
+  if (!silent) ElMessage.success(status === 'draft' ? '草稿已保存' : '发布成功')
+  if (!silent) router.push('/user/diary')
 }
 function saveDraft() { saveDiary('draft') }
 function publish() { saveDiary('published') }
@@ -120,6 +231,10 @@ onMounted(() => {
   margin-bottom: 10px;
   resize: vertical;
 }
+.edit-tags {
+  width: 100%;
+  margin-bottom: 10px;
+}
 .tags {
   display: flex;
   gap: 10px;
@@ -155,6 +270,18 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   box-shadow: 0 2px 8px rgba(126,198,230,0.06);
+}
+.media-thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(126,198,230,0.10);
+}
+.media-name {
+  font-size: 13px;
+  color: #666;
+  margin-left: 4px;
 }
 .remove-btn {
   background: #ff4d4f;

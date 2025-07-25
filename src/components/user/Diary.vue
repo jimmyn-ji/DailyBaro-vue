@@ -61,6 +61,14 @@
       </div>
       <button class="add-btn" @click="goEdit()">新增日记</button>
     </div>
+    <el-dialog v-model="qaDialogVisible" title="智能问答" width="400px">
+      <el-input v-model="qaInput" placeholder="请输入你的问题，如：如何缓解压力" />
+      <div style="margin:10px 0;">
+        <el-button type="primary" @click="askQuestion">发送</el-button>
+      </div>
+      <div v-if="qaAnswer" style="background:#f6f6f6;padding:10px;border-radius:6px;white-space:pre-line;">{{ qaAnswer }}</div>
+    </el-dialog>
+    <el-button class="qa-btn" @click="qaDialogVisible=true" style="position:fixed;right:40px;bottom:40px;z-index:99;">智能问答</el-button>
   </div>
 </template>
 <script setup>
@@ -75,6 +83,9 @@ const tags = ref([])
 const selectedTag = ref(null)
 const selectedDate = ref(null)
 const statusTab = ref('all')
+const qaDialogVisible = ref(false)
+const qaInput = ref('')
+const qaAnswer = ref('')
 
 function resetFiltersExceptTab() {
   selectedTag.value = null;
@@ -120,6 +131,12 @@ async function deleteDiary(id) {
     ElMessage.success('删除成功')
     loadDiaries()
   } catch {}
+}
+async function askQuestion() {
+  if (!qaInput.value) return
+  qaAnswer.value = ''
+  const res = await request.post('/api/ai/query', { question: qaInput.value })
+  qaAnswer.value = res.data.data
 }
 const getMediaList = (diary) => Array.isArray(diary && diary.media) ? diary.media : []
 function formatDate(ts) {

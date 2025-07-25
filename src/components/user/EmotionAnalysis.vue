@@ -97,10 +97,10 @@ function exportImage() {
     if (!el) return
     html2canvas(el, { useCORS: true, scale: 2 }).then(canvas => {
       const imgData = canvas.toDataURL('image/png')
-      const a = document.createElement('a')
+    const a = document.createElement('a')
       a.href = imgData
       a.download = '情绪分析.png'
-      a.click()
+    a.click()
     })
   })
 }

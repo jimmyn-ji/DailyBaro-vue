@@ -38,6 +38,11 @@
           <div style="white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow:auto;">{{ content }}</div>
         </el-dialog>
       </div>
+      <el-button @click="getSmartAdvice" style="margin-top:10px;">获取智能建议</el-button>
+      <el-dialog v-model="adviceDialogVisible" title="智能建议" width="400px">
+        <div v-if="adviceText">{{ adviceText }}</div>
+        <div v-else>正在分析，请稍候...</div>
+      </el-dialog>
       <div class="btn-group">
         <button class="draft-btn" @click="saveDraft">保存草稿</button>
         <button class="publish-btn" @click="publish">发布</button>
@@ -180,6 +185,14 @@ async function saveDiary(status, silent = false) {
 }
 function saveDraft() { saveDiary('draft') }
 function publish() { saveDiary('published') }
+const adviceDialogVisible = ref(false)
+const adviceText = ref('')
+async function getSmartAdvice() {
+  adviceDialogVisible.value = true
+  adviceText.value = ''
+  const res = await request.post('/api/ai/diary-feedback', { diaryContent: content.value })
+  adviceText.value = res.data.data
+}
 onMounted(() => {
   loadTags()
   loadDiary()

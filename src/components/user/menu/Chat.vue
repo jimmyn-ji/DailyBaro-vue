@@ -1,42 +1,45 @@
 <template>
   <div class="chat-bg">
     <div class="chat-card">
-        <div class="title">
+      <div class="title">
         <h2 class="chat-title">智能问答</h2>
         <p class="subtitle">与AI对话，获得情绪建议与关怀</p>
-        </div>
-        <div class="chat-content">
-          <div class="chat-history">
-            <div v-for="(message, index) in messages" :key="index" :class="['message', message.role]">
-              <div class="message-content">{{ message.content }}</div>
-            </div>
-          </div>
-          <div class="chat-input">
-            <el-input
-                v-model="inputMessage"
-              placeholder="请输入你的问题，如‘如何缓解压力’"
-                @keyup.enter="sendMessage"
-                class="custom-input"
-            ></el-input>
-            <el-button
-                type="primary"
-                :loading="loading"
-                @click="sendMessage"
-                class="send-button"
-            >
-              发送
-            </el-button>
+      </div>
+      <div class="chat-content">
+        <div class="chat-history" ref="historyRef">
+          <div v-for="(message, index) in messages" :key="index" :class="['message', message.role]">
+            <img v-if="message.role==='ai'" class="avatar" :src="aiAvatar" />
+            <div class="message-content">{{ message.content }}</div>
+            <img v-if="message.role==='user'" class="avatar user" :src="userAvatar" />
           </div>
         </div>
+        <div class="chat-input">
+          <el-input
+            v-model="inputMessage"
+            placeholder="请输入你的问题"
+            @keyup.enter="sendMessage"
+            class="custom-input"
+          ></el-input>
+          <el-button
+            type="primary"
+            :loading="loading"
+            @click="sendMessage"
+            class="send-button"
+          >发送</el-button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import aiAvatar from '@/static/imgs/ai.png'
+import userAvatar from '@/static/imgs/avatar.png'
 const inputMessage = ref('')
 const loading = ref(false)
 const messages = ref([])
+const historyRef = ref(null)
 const sendMessage = async () => {
   if (!inputMessage.value.trim()) {
     ElMessage.warning('请输入问题')
@@ -44,22 +47,25 @@ const sendMessage = async () => {
   }
   loading.value = true
   messages.value.push({ role: 'user', content: inputMessage.value })
+  await nextTick()
+  if (historyRef.value) historyRef.value.scrollTop = historyRef.value.scrollHeight
   try {
-    const response = await fetch('http://127.0.0.1:8081/ai/streamChat', {
+    const response = await fetch('http://127.0.0.1:8081/api/ai/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: inputMessage.value })
+      body: JSON.stringify({ question: inputMessage.value })
     })
     if (!response.ok) throw new Error('请求失败')
     const data = await response.json()
-    if (data.success) {
+    if (data.code === 200) {
       messages.value.push({ role: 'ai', content: data.data })
     } else {
       ElMessage.error(data.message || 'AI 服务返回错误')
     }
+    await nextTick()
+    if (historyRef.value) historyRef.value.scrollTop = historyRef.value.scrollHeight
   } catch (error) {
     ElMessage.error('请求失败，请重试')
-    console.error('请求错误:', error)
   } finally {
     loading.value = false
     inputMessage.value = ''
@@ -115,17 +121,46 @@ const sendMessage = async () => {
   border: 1px solid #dcdfe6;
 }
 .message {
+  display: flex;
+  align-items: flex-end;
   margin-bottom: 15px;
 }
+.message.user {
+  flex-direction: row-reverse;
+}
+.message .avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  margin: 0 8px;
+}
+.message .avatar.user {
+  margin-left: 8px;
+  margin-right: 0;
+}
 .message-content {
-  padding: 10px;
-  border-radius: 6px;
+  max-width: 60%;
+  padding: 10px 16px;
+  border-radius: 16px;
   background: #f0f0f0;
   color: #333;
+  word-break: break-all;
 }
 .message.ai .message-content {
   background: #7ec6e6;
   color: white;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 16px;
+  border-top-right-radius: 16px;
+  border-top-left-radius: 16px;
+}
+.message.user .message-content {
+  background: #f7cac9;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 16px;
+  border-top-right-radius: 16px;
+  border-top-left-radius: 16px;
 }
 .chat-input {
   display: flex;

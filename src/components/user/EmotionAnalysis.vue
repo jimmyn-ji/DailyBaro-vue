@@ -1,11 +1,13 @@
 <template>
   <div class="analysis-bg">
-    <div class="analysis-card">
-      <h2 class="analysis-title">情绪分析</h2>
+    <div class="analysis-card" ref="analysisContentRef">
       <div class="date-bar">
         <label>开始日期: <input type="date" v-model="startDate" /></label>
         <label>结束日期: <input type="date" v-model="endDate" /></label>
         <button class="refresh-btn" @click="loadCharts">刷新</button>
+      </div>
+      <div class="explain-bar">
+        <span>情绪波动值说明：1为最积极，-1为最消极，0为中性。不同情绪标签有不同分值，波动值为当天所有情绪标签的平均分。</span>
       </div>
       <div id="line-chart" class="chart-box"></div>
       <div id="pie-chart" class="chart-box"></div>
@@ -21,19 +23,34 @@
   </div>
 </template>
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+
 const aiText = ref('')
 const startDate = ref(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
 const endDate = ref(new Date().toISOString().slice(0, 10))
 const lineChart = ref(null)
 const pieChart = ref(null)
+const analysisContentRef = ref(null)
+
+function formatDate(ts) {
+  const d = new Date(ts)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 async function loadCharts() {
-  const res1 = await request.get('/api/analysis/fluctuation', { params: { startDate: startDate.value, endDate: endDate.value } })
+  const userId = window.sessionStorage.getItem('uid')
+  const params = { userId, startDate: startDate.value, endDate: endDate.value }
+  const res1 = await request.get('/api/analysis/fluctuation', { params })
   const data1 = res1.data.data || []
-  const xData = data1.map(d => d.date)
-  const yData = data1.map(d => d.emotionScore)
+  const xData = data1.map(d => formatDate(d.date))
+  const yData = data1.map(d => d.value)
   const line = echarts.init(document.getElementById('line-chart'))
   line.setOption({
     title: { text: '情绪波动' },
@@ -42,33 +59,58 @@ async function loadCharts() {
     series: [{ data: yData, type: 'line', smooth: true }]
   })
   lineChart.value = line
-  const res2 = await request.get('/api/analysis/distribution', { params: { startDate: startDate.value, endDate: endDate.value } })
+  const res2 = await request.get('/api/analysis/distribution', { params })
   const data2 = res2.data.data || []
   const pie = echarts.init(document.getElementById('pie-chart'))
   pie.setOption({
     title: { text: '情绪分布', left: 'center' },
     tooltip: { trigger: 'item' },
-    series: [{ type: 'pie', radius: '50%', data: data2.map(d => ({ name: d.emotion, value: d.count })) }]
+    series: [{ type: 'pie', radius: '50%', data: data2.map(d => ({ name: d.emotion, value: d.percentage })) }]
   })
   pieChart.value = pie
 }
+
 async function loadAIText() {
-  const res = await request.post('/api/ai/diary-feedback', { diaryContent: '请根据近一周情绪数据生成分析' })
+  const params = { startDate: startDate.value, endDate: endDate.value }
+  const res = await request.post('/api/ai/diary-feedback', { diaryContent: '请根据当前筛选的情绪数据生成分析' })
   aiText.value = res.data.data
 }
+
 function exportPDF() {
-  window.open(`/api/export/analysis.pdf?startDate=${startDate.value}&endDate=${endDate.value}`)
+  nextTick(() => {
+    const el = analysisContentRef.value
+    if (!el) return
+    html2canvas(el, { useCORS: true, scale: 2 }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save('情绪分析.pdf')
+    })
+  })
 }
+
 function exportImage() {
-  if (lineChart.value) {
-    const url = lineChart.value.getDataURL({ type: 'png' })
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'emotion-line.png'
-    a.click()
-  }
+  nextTick(() => {
+    const el = analysisContentRef.value
+    if (!el) return
+    html2canvas(el, { useCORS: true, scale: 2 }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png')
+      const a = document.createElement('a')
+      a.href = imgData
+      a.download = '情绪分析.png'
+      a.click()
+    })
+  })
 }
+
 onMounted(() => {
+  loadCharts()
+  loadAIText()
+})
+
+watch([startDate, endDate], () => {
   loadCharts()
   loadAIText()
 })
@@ -76,22 +118,15 @@ onMounted(() => {
 <style scoped>
 .analysis-bg {
   min-height: 100vh;
-  background: linear-gradient(135deg, #7ec6e6 0%, #f7cac9 100%);
+  background: transparent !important;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 40px 0;
+  padding: 20px 0;
 }
-.analysis-card {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(126,198,230,0.10);
-  padding: 36px 32px 32px 32px;
-  width: 700px;
-  max-width: 98vw;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.analysis-card, .chart-box, .ai-analysis, .export-bar, .date-bar {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .analysis-title {
   font-size: 32px;
@@ -126,17 +161,17 @@ onMounted(() => {
 .chart-box {
   width: 100%;
   height: 300px;
-  background: #f7fafc;
-  border-radius: 12px;
+  background: rgba(255,255,255,0.88);
+  border-radius: 16px;
   margin-bottom: 18px;
-  box-shadow: 0 2px 8px rgba(126,198,230,0.06);
+  box-shadow: 0 2px 8px rgba(126,198,230,0.09);
 }
 .ai-analysis {
-  background: #f7fafc;
-  border-radius: 10px;
-  padding: 18px 16px;
+  background: rgba(255,255,255,0.88);
+  border-radius: 16px;
+  padding: 16px 14px;
   margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(126,198,230,0.06);
+  box-shadow: 0 2px 8px rgba(126,198,230,0.09);
 }
 .export-bar {
   display: flex;
@@ -158,5 +193,14 @@ onMounted(() => {
 }
 .export-btn:hover {
   background: linear-gradient(90deg, #f7cac9, #7ec6e6);
+}
+.explain-bar {
+  background: rgba(255,255,255,0.88);
+  border-radius: 10px;
+  padding: 8px 16px;
+  margin-bottom: 10px;
+  color: #666;
+  font-size: 15px;
+  text-align: center;
 }
 </style> 

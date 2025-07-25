@@ -78,7 +78,7 @@ const goUpdateInfo = () => {
 <style scoped>
 .whole-bg {
   min-height: 100vh;
-  background: linear-gradient(135deg, #7ec6e6 0%, #f7cac9 100%);
+  background: transparent !important;
 }
 .user-header {
   display: flex;
@@ -88,6 +88,22 @@ const goUpdateInfo = () => {
   height: 70px;
   background: rgba(255,255,255,0.95);
   box-shadow: 0 2px 12px rgba(126,198,230,0.08);
+}
+.el-aside {
+  background: url('@/static/imgs/back.png') no-repeat center center;
+  background-size: cover;
+  position: relative;
+}
+.el-menu {
+  background: transparent !important;
+}
+.el-main {
+  background: #e6f4fa !important;
+  min-height: calc(100vh - 70px);
+  border-radius: 16px 0 0 0;
+  margin: 20px 20px 20px 0;
+  box-shadow: 0 0 10px rgba(0,0,0,0.05);
+  padding: 30px;
 }
 .avatar-img {
   width: 54px;
@@ -119,17 +135,5 @@ const goUpdateInfo = () => {
   font-size: 16px;
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(126,198,230,0.15);
-}
-.el-aside {
-  background: rgba(255,255,255,0.95);
-  box-shadow: 2px 0 12px rgba(0,0,0,0.05);
-}
-.el-main {
-  background: #fff;
-  min-height: calc(100vh - 70px);
-  border-radius: 16px 0 0 0;
-  margin: 20px 20px 20px 0;
-  box-shadow: 0 0 10px rgba(0,0,0,0.05);
-  padding: 30px;
 }
 </style> 

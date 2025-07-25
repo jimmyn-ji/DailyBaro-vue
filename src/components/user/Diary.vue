@@ -35,22 +35,22 @@
       <div class="diary-list">
         <div v-if="Array.isArray(diaries) && diaries.length > 0">
           <div v-for="diary in diaries" :key="diary.diaryId" class="diary-item">
-            <div class="diary-header">
-              <h3>{{ diary.title }}</h3>
-              <span v-if="diary.status === 'draft'" class="status-draft">[草稿]</span>
-              <span v-else-if="diary.status === 'published'" class="status-published">[已发布]</span>
-            </div>
-            <div class="media-preview">
+          <div class="diary-header">
+            <h3>{{ diary.title }}</h3>
+            <span v-if="diary.status === 'draft'" class="status-draft">[草稿]</span>
+            <span v-else-if="diary.status === 'published'" class="status-published">[已发布]</span>
+          </div>
+          <div class="media-preview">
               <template v-for="media in getMediaList(diary)" :key="media && media.media_url">
                 <img v-if="media && media.media_type==='image'" :src="media.media_url" class="media-thumb" />
                 <video v-else-if="media && media.media_type==='video'" :src="media.media_url" controls class="media-thumb" />
                 <audio v-else-if="media && media.media_type==='audio'" :src="media.media_url" controls class="media-thumb" />
               </template>
-            </div>
-            <p>{{ diary.content.substring(0, 50) }}...</p>
+          </div>
+          <p>{{ diary.content.substring(0, 50) }}...</p>
             <span class="diary-meta">{{ formatDate(diary.createTime) }}</span>
-            <div class="diary-actions">
-              <el-button size="small" @click="editDiary(diary)">编辑</el-button>
+          <div class="diary-actions">
+            <el-button size="small" @click="editDiary(diary)">编辑</el-button>
               <el-button size="small" type="danger" @click="deleteDiary(diary.diaryId)">删除</el-button>
             </div>
           </div>
@@ -135,23 +135,15 @@ onMounted(() => {
 <style scoped>
 .diary-bg {
   min-height: 100vh;
-  background: transparent;
+  background: transparent !important;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 40px 0;
+  padding: 20px 0;
 }
-.diary-card {
-  background: #fff !important;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(126,198,230,0.10);
-  padding: 36px 32px 32px 32px;
-  width: 600px;
-  max-width: 95vw;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  color: #222 !important;
+.diary-card, .diary-item, .diary-list, .filter-bar, .diary-header, .diary-actions {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .diary-title {
   font-size: 32px;
@@ -193,11 +185,11 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 .diary-item {
-  background: #f7fafc;
-  border-radius: 10px;
-  padding: 18px 16px;
+  background: rgba(255,255,255,0.88);
+  border-radius: 16px;
+  padding: 16px 14px;
   margin-bottom: 14px;
-  box-shadow: 0 2px 8px rgba(126,198,230,0.06);
+  box-shadow: 0 2px 8px rgba(126,198,230,0.09);
   cursor: pointer;
   transition: box-shadow 0.2s;
   color: #222 !important;
@@ -257,4 +249,4 @@ onMounted(() => {
 .add-btn:hover {
   background: linear-gradient(90deg, #f7cac9, #7ec6e6);
 }
-</style>
+</style> 

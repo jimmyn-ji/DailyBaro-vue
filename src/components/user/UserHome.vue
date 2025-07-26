@@ -2,7 +2,11 @@
   <div class="whole-bg">
     <div class="user-header">
       <div style="display: flex; align-items: center;">
-        <img class="avatar-img" src="/src/assets/assets/imgs/bghalf-2.jpg" alt="avatar" @click="goUpdateInfo" title="点击修改个人信息" />
+      <img class="avatar-img" src="/src/assets/assets/imgs/bghalf-2.jpg" alt="avatar" @click="goUpdateInfo" title="点击修改个人信息" />
+        <div class="energy-box">
+          <span class="energy-icon">⚡</span>
+          <span class="energy-value">{{ userEnergy }}</span>
+        </div>
         <DailyQuote />
       </div>
       <span class="header-title">情绪日记本</span>
@@ -71,6 +75,9 @@ import request from '@/utils/request'
 const router = useRouter()
 const route = useRoute()
 const defaultUrl = ref('diary')
+const userEnergy = ref(0)
+const userId = window.sessionStorage.getItem('uid')
+
 watch(
   () => route.path,
   () => {
@@ -107,8 +114,20 @@ async function markRead(capsuleId) {
   if (unreadReminders.value.length === 0) showCapsuleReminder.value = false
 }
 
+async function loadUserEnergy() {
+  if (!userId) return
+  const res = await request.get(`/user/energy/${userId}`)
+  if (res.data.code === 200 && typeof res.data.data === 'number') {
+    userEnergy.value = res.data.data
+  }
+}
+
 onMounted(() => {
   loadUnreadReminders()
+  loadUserEnergy()
+  
+  // 监听能量值更新事件
+  window.addEventListener('energyUpdated', loadUserEnergy)
 })
 </script>
 

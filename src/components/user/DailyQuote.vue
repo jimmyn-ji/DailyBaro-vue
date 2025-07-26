@@ -65,7 +65,7 @@ async function saveCustomQuote() {
     if (response.data.code === 200) {
       ElMessage.success('自定义日签设置成功')
       quote.value = response.data.data
-      customQuote.value = ''
+  customQuote.value = ''
       isModifiedToday.value = true
     } else {
       ElMessage.error(response.data.message || '设置失败')

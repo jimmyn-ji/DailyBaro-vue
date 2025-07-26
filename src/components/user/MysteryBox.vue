@@ -2,40 +2,96 @@
   <div class="box-bg">
     <div class="box-card">
       <h2 class="box-title">情绪盲盒</h2>
-      <button class="draw-btn" @click="drawBox">抽取盲盒</button>
+      <button class="draw-btn" :disabled="hasDrawnToday" @click="drawBox">
+        {{ hasDrawnToday ? '今日已抽取' : '抽取盲盒' }}
+      </button>
       <div v-if="boxContent" class="box-content">
         <h3>今日盲盒</h3>
-        <p>{{ boxContent.content }}</p>
-        <button v-if="boxContent.content_type==='task' && !completed" class="complete-btn" @click="markCompleted">标记完成</button>
-        <span v-if="completed" class="completed-tip">已完成，奖励+1</span>
+        <template v-if="boxContent.contentType==='quote'">
+          <p>🌈 <b>治愈语录：</b>{{ boxContent.content }}</p>
+        </template>
+        <template v-else-if="boxContent.contentType==='tip'">
+          <p>🧩 <b>情绪管理技巧：</b>{{ boxContent.content }}</p>
+        </template>
+        <template v-else-if="boxContent.contentType==='task'">
+          <p>🎯 <b>今日小任务：</b>{{ boxContent.content }}</p>
+          <button v-if="!boxContent.isCompleted" class="complete-btn" @click="markCompleted">标记完成</button>
+          <span v-if="boxContent.isCompleted" class="completed-tip">已完成，奖励+1 🎉</span>
+        </template>
       </div>
+      <transition name="reward-fade">
+        <div v-if="showReward" class="reward-popup">情绪能量值 +1</div>
+      </transition>
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref } from 'vue'
 import request from '@/utils/request'
 const boxContent = ref(null)
-const completed = ref(false)
+const hasDrawnToday = ref(false)
+const showReward = ref(false)
+
 async function drawBox() {
+  if (hasDrawnToday.value) return
   const res = await request.post('/api/mystery-box/draw')
-  boxContent.value = res.data.data && res.data.data.boxItem ? {
-    ...res.data.data.boxItem,
-    drawnBoxId: res.data.data.drawnBoxId,
-    is_completed: res.data.data.isCompleted || res.data.data.is_completed
-  } : null
-  completed.value = boxContent.value && boxContent.value.is_completed
+  if (res.data.code === 200 && res.data.data) {
+    boxContent.value = {
+      drawnBoxId: res.data.data.drawnBoxId,
+      content: res.data.data.content,
+      contentType: res.data.data.contentType,
+      isCompleted: res.data.data.isCompleted,
+      drawTime: res.data.data.drawTime,
+      energyReward: res.data.data.energyReward
+    }
+    hasDrawnToday.value = true
+  }
 }
+
 async function markCompleted() {
   if (!boxContent.value) return
-  await request.post(`/api/mystery-box/complete/${boxContent.value.drawnBoxId}`)
-  completed.value = true
+  const res = await request.post(`/api/mystery-box/complete/${boxContent.value.drawnBoxId}`)
+  if (res.data.code === 200) {
+    boxContent.value.isCompleted = true
+    showReward.value = true
+    setTimeout(() => { showReward.value = false }, 1800)
+    
+    // 通知父组件刷新能量值
+    window.dispatchEvent(new CustomEvent('energyUpdated'))
+  }
 }
+
+// 页面加载时自动获取今日盲盒状态
+;(async function init() {
+  try {
+    const res = await request.get('/api/mystery-box/status')
+    console.log('盲盒状态接口返回:', res.data)
+    if (res.data.code === 200 && res.data.data) {
+      boxContent.value = {
+        drawnBoxId: res.data.data.drawnBoxId,
+        content: res.data.data.content,
+        contentType: res.data.data.contentType,
+        isCompleted: res.data.data.isCompleted,
+        drawTime: res.data.data.drawTime,
+        energyReward: res.data.data.energyReward
+      }
+      hasDrawnToday.value = true
+      console.log('盲盒内容已设置:', boxContent.value)
+    } else {
+      hasDrawnToday.value = false
+    }
+  } catch (error) {
+    console.error('获取盲盒状态失败:', error)
+    hasDrawnToday.value = false
+  }
+})()
 </script>
+
 <style scoped>
 .box-bg {
   min-height: 100vh;
-  background: linear-gradient(135deg, #7ec6e6 0%, #f7cac9 100%);
+  background: #f0f5f9 !important;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -74,7 +130,12 @@ async function markCompleted() {
   cursor: pointer;
   transition: background 0.2s;
 }
-.draw-btn:hover {
+.draw-btn:disabled {
+  background: #e0e0e0;
+  color: #aaa;
+  cursor: not-allowed;
+}
+.draw-btn:hover:enabled {
   background: linear-gradient(90deg, #f7cac9, #7ec6e6);
 }
 .box-content {
@@ -104,5 +165,30 @@ async function markCompleted() {
   font-weight: bold;
   margin-top: 10px;
   display: block;
+}
+.reward-popup {
+  position: fixed;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fffbe6;
+  color: #f0ad4e;
+  font-size: 22px;
+  font-weight: bold;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(240,173,78,0.12);
+  padding: 18px 36px;
+  z-index: 9999;
+  animation: pop 0.3s;
+}
+@keyframes pop {
+  0% { transform: translateX(-50%) scale(0.7); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+.reward-fade-enter-active, .reward-fade-leave-active {
+  transition: opacity 0.8s;
+}
+.reward-fade-enter-from, .reward-fade-leave-to {
+  opacity: 0;
 }
 </style> 

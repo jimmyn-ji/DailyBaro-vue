@@ -34,7 +34,7 @@ function getMediaType(filePath) {
   if (!filePath) return ''
   const lowerPath = filePath.toLowerCase()
   if (lowerPath.match(/\.(jpg|jpeg|png|gif|webp)$/)) return 'image'
-  if (lowerPath.match(/\.(mp3|wav|ogg|aac|m4a|ncm)$/)) return 'audio'
+  if (lowerPath.match(/\.(mp3|wav|ogg|aac|m4a|nvm|ncm)$/)) return 'audio' // 添加ncm支持在线播放
   if (lowerPath.match(/\.(mp4|avi|mov|wmv|flv)$/)) return 'video'
   return 'other'
 }
@@ -61,6 +61,7 @@ function handleImageError(event) {
 // 处理音频加载错误
 function handleAudioError(event) {
   console.error('音频加载失败:', event.target.src)
+  console.error('音频错误详情:', event.target.error)
   event.target.style.display = 'none'
   event.target.parentElement.innerHTML += '<div style="color: red; font-size: 12px;">音频加载失败</div>'
 }
@@ -135,7 +136,19 @@ onMounted(() => {
                   <i class="el-icon-headset"></i>
                   <span>音频文件</span>
                 </div>
-                <audio :src="getFullUrl(media.mediaUrl)" controls class="audio-player" preload="metadata" @error="handleAudioError"></audio>
+                <div class="audio-debug" style="font-size: 10px; color: #999; margin-bottom: 5px;">
+                  音频URL: {{ getFullUrl(media.mediaUrl) }}
+                </div>
+                <audio 
+                  :src="getFullUrl(media.mediaUrl)" 
+                  controls 
+                  class="audio-player" 
+                  preload="metadata" 
+                  @error="handleAudioError"
+                  @loadstart="() => console.log('音频开始加载:', getFullUrl(media.mediaUrl))"
+                  @canplay="() => console.log('音频可以播放:', getFullUrl(media.mediaUrl))"
+                  @loadeddata="() => console.log('音频数据加载完成:', getFullUrl(media.mediaUrl))"
+                ></audio>
               </div>
               
               <!-- 视频预览 -->
@@ -150,7 +163,8 @@ onMounted(() => {
               <!-- 其他文件 -->
               <div v-else class="media-other">
                 <i class="el-icon-document"></i>
-                <span>文件</span>
+                <span>{{ media.mediaUrl.split('/').pop() }}</span>
+                <a :href="getFullUrl(media.mediaUrl)" download style="margin-left:8px;color:#409eff;">下载</a>
               </div>
             </div>
           </div>

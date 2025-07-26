@@ -1,88 +1,126 @@
 <template>
-  <div class="quote-bg">
-    <div class="quote-card">
-      <h2 class="quote-title">今日日签</h2>
-      <div v-if="quote" class="quote-content">{{ quote.content }}</div>
-      <input v-model="customQuote" class="quote-input" placeholder="输入你的专属日签..." />
-      <button class="quote-btn" @click="saveCustomQuote">生成专属卡片</button>
-    </div>
+  <div class="daily-quote-navbar">
+    <span class="quote-content-navbar">{{ quote ? quote.content : '今天也值得被温柔对待' }}</span>
+    <el-popover placement="bottom" width="200" trigger="click">
+      <template #reference>
+        <el-button size="small" class="quote-btn-navbar" :disabled="isModifiedToday">自定义</el-button>
+      </template>
+      <el-input v-model="customQuote" placeholder="输入你的专属日签" maxlength="30" />
+      <el-button type="primary" size="small" @click="saveCustomQuote" style="margin-top:8px;">生成</el-button>
+    </el-popover>
   </div>
 </template>
+
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+
 const quote = ref(null)
 const customQuote = ref('')
+const isModifiedToday = ref(false)
+
 async function loadQuote() {
-  const res = await request.get('/api/quotes/random')
-  quote.value = res.data.data
+  try {
+    // 首先尝试获取自定义日签
+    const customResponse = await request.get('/api/quotes/custom')
+    if (customResponse.data.code === 200 && customResponse.data.data) {
+      quote.value = customResponse.data.data
+      // 检查今天是否已经修改过
+      const today = new Date()
+      const updateTime = new Date(customResponse.data.data.updateTime)
+      if (updateTime.toDateString() === today.toDateString()) {
+        isModifiedToday.value = true
+      }
+      return
+    }
+    
+    // 如果没有自定义日签，获取用户专属的随机日签
+    const randomResponse = await request.get('/api/quotes/random/user')
+    if (randomResponse.data.code === 200) {
+      quote.value = randomResponse.data.data
+    } else {
+      // 如果都失败了，使用默认日签
+      quote.value = { content: '今天也值得被温柔对待' }
+    }
+  } catch (error) {
+    console.error('加载日签失败:', error)
+    quote.value = { content: '今天也值得被温柔对待' }
+  }
 }
-function saveCustomQuote() {
-  quote.value = { content: customQuote.value }
-  customQuote.value = ''
+
+async function saveCustomQuote() {
+  if (!customQuote.value.trim()) {
+    ElMessage.warning('请输入日签内容')
+    return
+  }
+  
+  try {
+    const response = await request.post('/api/quotes/custom', {
+      content: customQuote.value.trim()
+    })
+    
+    if (response.data.code === 200) {
+      ElMessage.success('自定义日签设置成功')
+      quote.value = response.data.data
+      customQuote.value = ''
+      isModifiedToday.value = true
+    } else {
+      ElMessage.error(response.data.message || '设置失败')
+    }
+  } catch (error) {
+    console.error('保存自定义日签失败:', error)
+    ElMessage.error('设置失败，请稍后重试')
+  }
 }
-onMounted(() => { loadQuote() })
+
+onMounted(() => {
+  loadQuote()
+})
 </script>
+
 <style scoped>
-.quote-bg {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #7ec6e6 0%, #f7cac9 100%);
+.daily-quote-navbar {
+  background: #f0f5f9 !important;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 0;
-}
-.quote-card {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(126,198,230,0.10);
-  padding: 36px 32px 32px 32px;
-  width: 500px;
-  max-width: 95vw;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
   align-items: center;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(126,198,230,0.08);
+  padding: 0 14px;
+  margin-left: 8px;
+  min-width: 180px;
+  max-width: 240px;
+  height: 38px;
 }
-.quote-title {
-  font-size: 28px;
-  font-weight: bold;
-  color: #7ec6e6;
-  margin-bottom: 10px;
-  letter-spacing: 2px;
-  text-align: center;
-}
-.quote-content {
-  font-size: 20px;
+
+.quote-content-navbar {
+  flex: 1;
+  font-size: 13px;
   color: #333;
-  background: #f7fafc;
-  border-radius: 10px;
-  padding: 18px 16px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(126,198,230,0.06);
-  text-align: center;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
 }
-.quote-input {
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  padding: 12px;
-  font-size: 16px;
-  margin-bottom: 10px;
+
+.quote-btn-navbar {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(126,198,230,0.1);
+  border: 1px solid rgba(126,198,230,0.2);
+  color: #7ec6e6;
+  transition: all 0.2s;
 }
-.quote-btn {
-  background: linear-gradient(90deg, #7ec6e6, #f7cac9);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 28px;
-  font-size: 16px;
-  font-weight: bold;
-  box-shadow: 0 2px 8px rgba(126,198,230,0.15);
-  cursor: pointer;
-  transition: background 0.2s;
+
+.quote-btn-navbar:hover:not(:disabled) {
+  background: rgba(126,198,230,0.2);
+  border-color: rgba(126,198,230,0.4);
 }
-.quote-btn:hover {
-  background: linear-gradient(90deg, #f7cac9, #7ec6e6);
+
+.quote-btn-navbar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style> 

@@ -118,7 +118,7 @@ watch([startDate, endDate], () => {
 <style scoped>
 .analysis-bg {
   min-height: 100vh;
-  background: transparent !important;
+  background: #f0f5f9 !important;
   display: flex;
   justify-content: center;
   align-items: flex-start;

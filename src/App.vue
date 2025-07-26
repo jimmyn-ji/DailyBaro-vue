@@ -10,8 +10,8 @@
 <style scoped>
 .global-bg {
   min-height: 100vh;
-  background: url('./static/imgs/back.png') no-repeat center center fixed;
-  background-size: cover;
+  /* background: url('./static/imgs/back.png') no-repeat center center fixed; */
+  /* background-size: cover; */
 }
 .el-input {
   width: 180px;

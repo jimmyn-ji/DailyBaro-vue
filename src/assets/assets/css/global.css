@@ -106,3 +106,13 @@ html, body, #app {
   font-weight: bold;
 }
 
+.el-main {
+  background: #f0f5f9 !important;
+  min-height: calc(100vh - 70px);
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+body, html {
+  background: #f0f5f9 !important;
+}
+

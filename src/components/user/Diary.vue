@@ -172,11 +172,11 @@ onMounted(() => {
 <style scoped>
 .diary-bg {
   min-height: 100vh;
-  background: transparent !important;
+  background: #f0f5f9 !important;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 20px 0;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0;
 }
 .diary-card, .diary-item, .diary-list, .filter-bar, .diary-header, .diary-actions {
   background: transparent !important;

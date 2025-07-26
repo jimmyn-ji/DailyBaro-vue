@@ -120,7 +120,7 @@ onMounted(() => { loadPosts() })
 <style scoped>
 .planet-bg {
   min-height: 100vh;
-  background: linear-gradient(135deg, #7ec6e6 0%, #f7cac9 100%);
+  background: #eafaf1 !important;
   display: flex;
   justify-content: center;
   align-items: flex-start;

@@ -1,7 +1,10 @@
 <template>
   <div class="whole-bg">
     <div class="user-header">
-      <img class="avatar-img" src="/src/assets/assets/imgs/bghalf-2.jpg" alt="avatar" @click="goUpdateInfo" title="点击修改个人信息" />
+      <div style="display: flex; align-items: center;">
+        <img class="avatar-img" src="/src/assets/assets/imgs/bghalf-2.jpg" alt="avatar" @click="goUpdateInfo" title="点击修改个人信息" />
+        <DailyQuote />
+      </div>
       <span class="header-title">情绪日记本</span>
       <el-button class="logout" type="warning" @click="logout">退出</el-button>
     </div>
@@ -55,6 +58,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import DailyQuote from './DailyQuote.vue'
 const router = useRouter()
 const route = useRoute()
 const defaultUrl = ref('diary')
@@ -78,7 +82,8 @@ const goUpdateInfo = () => {
 <style scoped>
 .whole-bg {
   min-height: 100vh;
-  background: transparent !important;
+  background: url('@/static/imgs/back.png') no-repeat center center;
+  background-size: cover;
 }
 .user-header {
   display: flex;
@@ -86,19 +91,18 @@ const goUpdateInfo = () => {
   justify-content: space-between;
   padding: 0 30px;
   height: 70px;
-  background: rgba(255,255,255,0.95);
+  background: transparent !important;
   box-shadow: 0 2px 12px rgba(126,198,230,0.08);
 }
 .el-aside {
-  background: url('@/static/imgs/back.png') no-repeat center center;
-  background-size: cover;
+  background: transparent !important;
   position: relative;
 }
 .el-menu {
   background: transparent !important;
 }
 .el-main {
-  background: #e6f4fa !important;
+  background: transparent !important;
   min-height: calc(100vh - 70px);
   border-radius: 16px 0 0 0;
   margin: 20px 20px 20px 0;
@@ -106,34 +110,21 @@ const goUpdateInfo = () => {
   padding: 30px;
 }
 .avatar-img {
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 2px 8px rgba(126,198,230,0.15);
+  margin-right: 18px;
   cursor: pointer;
+  object-fit: cover;
   border: 2px solid #7ec6e6;
-  transition: box-shadow 0.2s, border 0.2s;
-}
-.avatar-img:hover {
-  box-shadow: 0 4px 16px rgba(126,198,230,0.25);
-  border: 2.5px solid #f7cac9;
 }
 .header-title {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: bold;
   color: #7ec6e6;
   letter-spacing: 2px;
-  flex: 1;
-  text-align: center;
 }
 .logout {
-  background: linear-gradient(90deg, #7ec6e6, #f7cac9);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  box-shadow: 0 2px 8px rgba(126,198,230,0.15);
+  margin-left: 20px;
 }
 </style> 

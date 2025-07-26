@@ -4,14 +4,22 @@ import router from '@/router'
 
 // 创建axios实例
 const request = axios.create({
-  baseURL: 'http://localhost:8081',   // 后端的接口地址  ip:port
-  timeout: 15000 // 请求超时时间
+  baseURL: 'http://localhost:8081',
+  timeout: 10000
 })
 
 // 请求拦截器
 request.interceptors.request.use(
   config => {
-    // 可以在这里添加请求头等配置
+    // 从sessionStorage获取用户ID并添加到请求头
+    const uid = window.sessionStorage.getItem('uid')
+    if (uid) {
+      config.headers.uid = uid
+      console.log('Added uid to request headers:', uid)
+    } else {
+      console.warn('No uid found in sessionStorage')
+    }
+    console.log('Request config:', config)
     return config
   },
   error => {

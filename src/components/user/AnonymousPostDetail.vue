@@ -5,7 +5,13 @@
       <div class="detail-content">{{ post.content }}</div>
       <div class="detail-meta">{{ post.create_time }}</div>
       <div class="detail-meta">可见范围: {{ post.visibility }}</div>
-      <button class="like-btn" @click="likePost">点赞({{ post.likes }})</button>
+      <button
+        class="like-btn"
+        :class="{ liked: post.liked }"
+        @click="likePost"
+      >
+        {{ post.liked ? '已点赞' : '点赞' }}({{ post.likeCount }})
+      </button>
       <div class="comments">
         <div v-for="comment in post.comments" :key="comment.comment_id" class="comment-item">
           <span>{{ comment.content }}</span>
@@ -29,12 +35,24 @@ async function loadPost() {
   post.value = res.data.data || { content: '', create_time: '', visibility: '', likes: 0, comments: [] }
 }
 async function likePost() {
-  await request.post(`/api/anonymous-posts/${route.params.id}/like`)
+  if (post.value.liked) {
+    await request.delete(`/api/anonymous-posts/${route.params.id}/like`)
+  } else {
+    await request.post(`/api/anonymous-posts/${route.params.id}/like`)
+  }
   loadPost()
 }
 async function addComment() {
   if (!newComment.value) return
-  await request.post('/post/insertPost', { postId: route.params.id, content: newComment.value })
+  
+  const postId = Number(route.params.id)
+  console.log('当前postId:', postId, '类型:', typeof postId)
+  console.log('route.params:', route.params)
+  
+  const commentData = { postId: postId, userId: 99999, content: newComment.value }
+  console.log('发送的评论数据:', commentData)
+  
+  await request.post('/post/insertPost', commentData)
   newComment.value = ''
   loadPost()
 }
@@ -91,6 +109,11 @@ onMounted(() => { loadPost() })
   box-shadow: 0 2px 8px rgba(240,173,78,0.10);
   cursor: pointer;
   align-self: flex-start;
+}
+.like-btn.liked {
+  background: #ff7e67;
+  color: #fff;
+  border: 1px solid #ff7e67;
 }
 .comments {
   margin-top: 20px;

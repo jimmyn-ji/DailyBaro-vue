@@ -150,17 +150,31 @@ async function loadTags() {
 }
 async function loadDiary() {
   if (!isEdit) return
-  const res = await request.get(`/api/diary/${route.params.id}`)
-  const d = res.data.data
-  title.value = d.title
-  content.value = d.content
-  selectedTags.value = d.tagIds ? d.tagIds : (d.tags ? d.tags.map(t => t.tagId) : [])
-  existMedia.value = (d.media || []).map(m => ({
-    ...m,
-    url: m.mediaUrl,
-    type: m.mediaType,
-    name: m.mediaUrl ? m.mediaUrl.split('/').pop() : ''
-  }))
+  try {
+    const res = await request.get(`/api/diary/${route.params.id}`)
+    const d = res.data.data
+    
+    // 权限检查：如果不是日记作者，跳转到详情页面
+    const currentUserId = window.sessionStorage.getItem('uid')
+    if (d.user_id && currentUserId !== d.user_id.toString()) {
+      ElMessage.error('您没有权限编辑此日记')
+      router.push(`/user/diary/detail/${route.params.id}`)
+      return
+    }
+    
+    title.value = d.title
+    content.value = d.content
+    selectedTags.value = d.tagIds ? d.tagIds : (d.tags ? d.tags.map(t => t.tagId) : [])
+    existMedia.value = (d.media || []).map(m => ({
+      ...m,
+      url: m.mediaUrl,
+      type: m.mediaType,
+      name: m.mediaUrl ? m.mediaUrl.split('/').pop() : ''
+    }))
+  } catch (error) {
+    ElMessage.error('加载日记失败')
+    router.push('/user/diary')
+  }
 }
 async function saveDiary(status, silent = false) {
   const form = new FormData()

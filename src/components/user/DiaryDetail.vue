@@ -73,7 +73,7 @@ function getFullUrl(url) {
 
 async function loadDiary() {
   try {
-    const res = await request.get(`/api/diary/${route.params.id}`)
+  const res = await request.get(`/api/diary/${route.params.id}`)
     diary.value = res.data.data || { title: '', content: '', createTime: '', media: [], tags: [], userId: null }
     // 添加调试信息
     console.log('Loaded diary:', diary.value)

@@ -13,7 +13,12 @@
       <div id="pie-chart" class="chart-box"></div>
       <div class="ai-analysis">
         <h3>AI分析</h3>
-        <p>{{ aiText }}</p>
+        <div v-if="aiLoading" class="ai-loading">
+          <div class="loading-spinner"></div>
+          <span>AI正在分析中...</span>
+        </div>
+        <p v-else>{{ aiText }}</p>
+        <button v-if="!aiLoading" class="reanalyze-btn" @click="loadAIText">重新分析</button>
       </div>
       <div class="export-bar">
         <button class="export-btn" @click="exportPDF">导出为PDF</button>
@@ -30,11 +35,14 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
 const aiText = ref('')
+const aiLoading = ref(false)
 const startDate = ref(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
 const endDate = ref(new Date().toISOString().slice(0, 10))
 const lineChart = ref(null)
 const pieChart = ref(null)
 const analysisContentRef = ref(null)
+const emotionData = ref({ fluctuation: [], distribution: [] })
+const aiCache = ref(new Map()) // 缓存AI分析结果
 
 function formatDate(ts) {
   const d = new Date(ts)
@@ -47,10 +55,37 @@ function formatDate(ts) {
 async function loadCharts() {
   const userId = window.sessionStorage.getItem('uid')
   const params = { userId, startDate: startDate.value, endDate: endDate.value }
-  const res1 = await request.get('/api/analysis/fluctuation', { params })
+  
+  try {
+    // 并行加载两个图表数据
+    const [res1, res2] = await Promise.all([
+      request.get('/api/analysis/fluctuation', { params }),
+      request.get('/api/analysis/distribution', { params })
+    ])
+    
   const data1 = res1.data.data || []
-  const xData = data1.map(d => formatDate(d.date))
-  const yData = data1.map(d => d.value)
+    const data2 = res2.data.data || []
+    
+    // 保存数据用于AI分析
+    emotionData.value = { fluctuation: data1, distribution: data2 }
+    
+    // 渲染图表
+    renderCharts(data1, data2)
+    
+    // 图表加载完成后，延迟加载AI分析
+    setTimeout(() => {
+      loadAIText()
+    }, 500)
+    
+  } catch (error) {
+    console.error('加载图表数据失败:', error)
+  }
+}
+
+function renderCharts(fluctuationData, distributionData) {
+  const xData = fluctuationData.map(d => formatDate(d.date))
+  const yData = fluctuationData.map(d => d.value)
+  
   const line = echarts.init(document.getElementById('line-chart'))
   line.setOption({
     title: { text: '情绪波动' },
@@ -59,21 +94,79 @@ async function loadCharts() {
     series: [{ data: yData, type: 'line', smooth: true }]
   })
   lineChart.value = line
-  const res2 = await request.get('/api/analysis/distribution', { params })
-  const data2 = res2.data.data || []
+  
   const pie = echarts.init(document.getElementById('pie-chart'))
   pie.setOption({
     title: { text: '情绪分布', left: 'center' },
     tooltip: { trigger: 'item' },
-    series: [{ type: 'pie', radius: '50%', data: data2.map(d => ({ name: d.emotion, value: d.percentage })) }]
+    series: [{ type: 'pie', radius: '50%', data: distributionData.map(d => ({ name: d.emotion, value: d.percentage })) }]
   })
   pieChart.value = pie
 }
 
 async function loadAIText() {
-  const params = { startDate: startDate.value, endDate: endDate.value }
-  const res = await request.post('/api/ai/diary-feedback', { diaryContent: '请根据当前筛选的情绪数据生成分析' })
+  // 检查缓存
+  const cacheKey = `${startDate.value}-${endDate.value}`
+  if (aiCache.value.has(cacheKey)) {
+    aiText.value = aiCache.value.get(cacheKey)
+    return
+  }
+  
+  aiLoading.value = true
+  
+  try {
+    // 构建更详细的AI分析请求内容
+    const analysisContent = buildAIAnalysisContent()
+    
+    const res = await request.post('/api/ai/diary-feedback', { 
+      diaryContent: analysisContent 
+    })
+    
+    if (res.data.code === 200) {
   aiText.value = res.data.data
+      // 缓存结果
+      aiCache.value.set(cacheKey, res.data.data)
+    } else {
+      aiText.value = 'AI分析暂时不可用，请稍后重试。'
+    }
+  } catch (error) {
+    console.error('AI分析失败:', error)
+    aiText.value = 'AI分析失败，请检查网络连接后重试。'
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+function buildAIAnalysisContent() {
+  const { fluctuation, distribution } = emotionData.value
+  
+  if (!fluctuation.length && !distribution.length) {
+    return '暂无情绪数据可供分析'
+  }
+  
+  let content = '请根据以下情绪数据进行分析：\n\n'
+  
+  // 添加情绪波动数据
+  if (fluctuation.length > 0) {
+    content += '情绪波动数据：\n'
+    fluctuation.forEach(item => {
+      content += `${formatDate(item.date)}: ${item.value}\n`
+    })
+    content += '\n'
+  }
+  
+  // 添加情绪分布数据
+  if (distribution.length > 0) {
+    content += '情绪分布数据：\n'
+    distribution.forEach(item => {
+      content += `${item.emotion}: ${item.percentage}%\n`
+    })
+    content += '\n'
+  }
+  
+  content += '请基于以上数据，分析用户的情绪状态、变化趋势，并给出相应的建议。'
+  
+  return content
 }
 
 function exportPDF() {
@@ -107,12 +200,10 @@ function exportImage() {
 
 onMounted(() => {
   loadCharts()
-  loadAIText()
 })
 
 watch([startDate, endDate], () => {
   loadCharts()
-  loadAIText()
 })
 </script>
 <style scoped>
@@ -172,6 +263,39 @@ watch([startDate, endDate], () => {
   padding: 16px 14px;
   margin-bottom: 10px;
   box-shadow: 0 2px 8px rgba(126,198,230,0.09);
+}
+.ai-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #666;
+}
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #7ec6e6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.reanalyze-btn {
+  background: linear-gradient(90deg, #7ec6e6, #f7cac9);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.reanalyze-btn:hover {
+  background: linear-gradient(90deg, #f7cac9, #7ec6e6);
 }
 .export-bar {
   display: flex;

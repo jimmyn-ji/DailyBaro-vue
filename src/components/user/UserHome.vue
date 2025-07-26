@@ -41,6 +41,7 @@
           <el-menu-item index="capsule">
             <i class="el-icon-coin"></i>
             <span>情绪胶囊</span>
+            <span v-if="unreadReminders.length > 0" class="red-dot"></span>
           </el-menu-item>
           <el-menu-item index="mysterybox">
             <i class="el-icon-present"></i>
@@ -52,13 +53,21 @@
         <router-view></router-view>
       </el-main>
     </el-container>
+    <el-dialog v-model="showCapsuleReminder" title="情绪胶囊提醒" width="400px" :close-on-click-modal="false">
+      <div v-for="reminder in unreadReminders" :key="reminder.capsuleId" style="margin-bottom: 12px;">
+        <div>您的情绪胶囊已到开启时间：{{ reminder.openTime }}</div>
+        <div>内容预览：{{ reminder.content ? reminder.content.slice(0, 30) : '（无内容）' }}</div>
+        <el-button size="small" type="primary" @click="markRead(reminder.capsuleId)">我知道了</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import DailyQuote from './DailyQuote.vue'
+import request from '@/utils/request'
 const router = useRouter()
 const route = useRoute()
 const defaultUrl = ref('diary')
@@ -77,6 +86,30 @@ const handleMenuSelect = (index) => {
 const goUpdateInfo = () => {
   router.push('/user/update_info')
 }
+
+// --------- 胶囊提醒相关 ---------
+const unreadReminders = ref([])
+const showCapsuleReminder = ref(false)
+
+async function loadUnreadReminders() {
+  try {
+    const res = await request.get('/api/capsules/reminders/unread')
+    if (res.data.code === 200) {
+      unreadReminders.value = res.data.data || []
+      showCapsuleReminder.value = unreadReminders.value.length > 0
+    }
+  } catch (e) {}
+}
+
+async function markRead(capsuleId) {
+  await request.post(`/api/capsules/reminders/read/${capsuleId}`)
+  unreadReminders.value = unreadReminders.value.filter(r => r.capsuleId !== capsuleId)
+  if (unreadReminders.value.length === 0) showCapsuleReminder.value = false
+}
+
+onMounted(() => {
+  loadUnreadReminders()
+})
 </script>
 
 <style scoped>
@@ -126,5 +159,13 @@ const goUpdateInfo = () => {
 }
 .logout {
   margin-left: 20px;
+}
+.red-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: red;
+  border-radius: 50%;
+  margin-left: 4px;
 }
 </style> 

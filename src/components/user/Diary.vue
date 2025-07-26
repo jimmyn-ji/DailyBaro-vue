@@ -52,8 +52,8 @@
           <!-- 只有日记作者才能看到编辑和删除按钮 -->
           <div v-if="isAuthor(diary)" class="diary-actions">
             <el-button size="small" @click="editDiary(diary)">编辑</el-button>
-            <el-button size="small" type="danger" @click="deleteDiary(diary.diaryId)">删除</el-button>
-          </div>
+              <el-button size="small" type="danger" @click="deleteDiary(diary.diaryId)">删除</el-button>
+            </div>
           </div>
         </div>
         <div v-else style="text-align:center;color:#bbb;padding:40px 0;">

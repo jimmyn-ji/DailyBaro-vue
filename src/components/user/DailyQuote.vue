@@ -24,6 +24,7 @@ async function loadQuote() {
   try {
     // 首先尝试获取自定义日签
     const customResponse = await request.get('/api/quotes/custom')
+    console.log('自定义日签接口返回:', customResponse.data)
     if (customResponse.data.code === 200 && customResponse.data.data) {
       quote.value = customResponse.data.data
       // 检查今天是否已经修改过
@@ -37,6 +38,7 @@ async function loadQuote() {
     
     // 如果没有自定义日签，获取用户专属的随机日签
     const randomResponse = await request.get('/api/quotes/random/user')
+    console.log('用户专属随机日签接口返回:', randomResponse.data)
     if (randomResponse.data.code === 200) {
       quote.value = randomResponse.data.data
     } else {
